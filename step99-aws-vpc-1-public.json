@@ -1,0 +1,78 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Simple Single VPC Single Subnet AZ-a",
+ 
+  "Parameters" : {
+    
+ 
+ },
+
+"Resources":{
+
+    "VPC" : {
+      "Type" : "AWS::EC2::VPC",
+      "Properties" : {
+        "CidrBlock" : "10.8.0.0/16",
+        "EnableDnsHostnames" : "true",
+        "EnableDnsSupport"  : "true",
+        "Tags" : [ {"Key" : "Name", "Value" : {"Ref": "AWS::StackName"} }, {"Key" : "StackId", "Value" : { "Ref" : "AWS::StackId"} } ]
+      }
+    },
+    
+    "PublicSubnetAZa" : {
+      "Type" : "AWS::EC2::Subnet",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" },
+        "AvailabilityZone" : { "Fn::Select" : [ "0", { "Fn::GetAZs" : ""  }  ] },
+        "CidrBlock" : "10.8.0.0/24",
+        "Tags" : [ {"Key" : "Name", "Value" : "sbn-Public-AZ-a" } ]
+      }
+    },
+          
+      "Igw" : {
+        "Type" : "AWS::EC2::InternetGateway",
+        "Properties" : {
+          "Tags" : [ {"Key" : "Name", "Value" : "igw-test-VPC" }, {"Key" : "StackId", "Value" : { "Ref" : "AWS::StackId"} } ]
+        }
+      },
+  
+      "VPCIgwAttachment" : {
+        "Type" : "AWS::EC2::VPCGatewayAttachment",
+        "Properties" : {
+          "InternetGatewayId" : { "Ref" : "Igw" },
+          "VpcId" : { "Ref" : "VPC" }
+         },
+         "DependsOn" : [ "VPC","Igw" ]
+      },
+            
+      "PublicSubnetRouteTable" : {
+        "Type" : "AWS::EC2::RouteTable",
+        "Properties" : {
+             "VpcId" : { "Ref" : "VPC" },
+            "Tags" : [ {"Key" : "Name", "Value" : "rte-Public-Subnet-VPC" }, {"Key" : "StackId", "Value" : { "Ref" : "AWS::StackId"} } ]
+          },
+        "DependsOn" : "Igw"
+      },
+    
+      "PublicSubnetRouteTableEntry01" : {
+        "Type" : "AWS::EC2::Route",
+        "Properties" : {
+            "DestinationCidrBlock" : "0.0.0.0/0",
+            "GatewayId" : { "Ref" : "Igw" },
+            "RouteTableId" : { "Ref" : "PublicSubnetRouteTable" }
+          },
+        "DependsOn" : "PublicSubnetRouteTable"
+      },
+    
+      "PublicSubnetAZaAssocSubnetRouteTable" : {
+        "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+        "Properties" : {
+            "RouteTableId" : { "Ref" : "PublicSubnetRouteTable" },
+            "SubnetId" : { "Ref" : "PublicSubnetAZa" }
+          },
+        "DependsOn" : "PublicSubnetRouteTableEntry01"
+      }
+    
+  }
+}
